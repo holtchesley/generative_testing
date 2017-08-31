@@ -66,10 +66,6 @@ mod test{
             }
             true
         }
-        
         QuickCheck::new().quickcheck(prop as fn(Vec<(i32,i32)>) -> bool)
     }
-
-
-
 }
