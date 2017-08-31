@@ -1,0 +1,9 @@
+{
+  "lib/python3.6/site-packages/wheel/test/test_basic.py::test_pydist": true,
+  "lib/python3.6/site-packages/wheel/test/test_tool.py::test_keygen": true,
+  "merge_sort_tests.py::test_stable": true,
+  "robinhood_test.py::test_robinhood_test": true,
+  "two_sums_test.py::test_hash_two_sums": true,
+  "two_sums_test.py::test_sort_then_binary_two_sums": true,
+  "two_sums_test.py::test_sort_two_sums": true
+}

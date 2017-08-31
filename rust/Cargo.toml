@@ -1,0 +1,7 @@
+[package]
+authors = ["Brennan Chesley <holtchesley@example.com>"]
+name = "rust"
+version = "0.1.0"
+
+[dependencies]
+quickcheck = "0.4.1"

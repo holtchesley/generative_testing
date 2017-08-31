@@ -1,0 +1,44 @@
+{
+  "name": "mocha-testcheck",
+  "version": "1.0.0-rc.0",
+  "description": "Generative property tests for Mocha",
+  "homepage": "https://github.com/leebyron/testcheck-js/tree/master/integrations/mocha-testcheck",
+  "license": "BSD-3-Clause",
+  "author": {
+    "name": "Lee Byron",
+    "url": "https://github.com/leebyron"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/leebyron/testcheck-js"
+  },
+  "bugs": {
+    "url": "https://github.com/leebyron/testcheck-js/issues"
+  },
+  "main": "mocha-check.js",
+  "dependencies": {
+    "testcheck": "^1.0.0-rc"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "mocha": "^3.2.0",
+    "mocha2": "./test/mocha2",
+    "mocha1": "./test/mocha1"
+  },
+  "files": [
+    "mocha-check.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "mocha",
+    "quickcheck",
+    "testcheck",
+    "generative",
+    "property",
+    "test"
+  ],
+  "scripts": {
+    "test": "mocha test && mocha2 test && mocha1 test"
+  }
+}
