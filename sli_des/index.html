@@ -1,0 +1,590 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>reveal.js</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				  <section>Generative Testing</section>
+          <section>
+              <h4>The Testing Landscape</h4>
+              <p class="fragment" data-fragment-index="1">The taxonomy leaves much to be desired</p>
+          </section>
+				<section>
+            <h3>Obligatory Philosophical Commentary</h3>
+        </section>
+        <section>
+            <h4>We should have confidence</h4>
+            <p class="fragment" data-fragment-index="1">in the <em>design</em> of our programs</p>
+            <p class="fragment" data-fragment-index="2">and the <em>behavior</em> of our programs</p>
+        </section>
+        <section>
+            <h4>Testing Behavior</h4>
+            <div style="font-size:80%;">
+            <table>
+                <tr>
+                    <td></td>
+                    <td>One Part</td>
+                    <td>The Whole Shebang</td>
+                </tr>
+                <tr>
+                    <td>One Example</td>
+                    <td>Unit</td>
+                    <td>Integration</td>
+                </tr>
+                <tr>
+                    <td>Many Examples</td>
+                    <td>Generative Testing</td>
+                    <td>Simulation Testing</td>
+                </tr>
+            </table>
+            </div>
+        </section>
+        <section>
+            <h4>What makes Generative testing special?</h4>
+        </section>
+        <section><h4>Shirking</h4></section>
+        <section><h4>I mean shrinking</h4></section>
+        <section>
+            <h4>Shrinking is search through successively smaller examples</h4>
+            <p class="fragment" data-fragment-index="1">(Smaller in a human intuition sense)</p>
+            <p  class="fragment" data-fragment-index="2">Find the most easy-to-reason-about counterexample</p>
+        </section>
+        <section>
+            <p style="position:absolute;top:0;left:0;">[1,10,4]</p>
+            <p style="position:absolute;top:-70px;left:200px;" class="fragment" data-fragment-index="1">[10,4]</p>
+            <p style="position:absolute;top:0px;left:150px;" class="fragment" data-fragment-index="1">→</p>
+            <p style="position:absolute;top:0px;left:200px;" class="fragment" data-fragment-index="1">[1,4]</p>
+            <p style="position:absolute;top:70px;left:200px;" class="fragment" data-fragment-index="1">[1,10]</p>
+
+            <p style="position:absolute;top:-40px;left:780px;" class="fragment" data-fragment-index="2">2</p>
+            <p style="position:absolute;top:-40px;left:800px;" class="fragment" data-fragment-index="3"> → -2</p>
+            <p style="position:absolute;top:40px;left:780px;" class="fragment" data-fragment-index="2">1</p>
+            <p style="position:absolute;top:40px;left:800px;" class="fragment" data-fragment-index="3"> → -1</p>
+        </section>
+        <section>
+            <h4>How we shrink is based on how we generate</h4>
+            <p>Either using some primitives, and combinators</p>
+            <p>Or based on the type of value we'd like implementing an interface</p>
+        </section>
+        <section>
+            <p>Generating a list of random integers in Javascript</p>
+            <pre><code>
+gen.array(gen.int)
+            </code></pre>
+        </section>
+        <section>
+            <section>
+            <p>Generating a vector of random integers in Rust</p>
+            <pre>
+                <code>
+let int_vec : Vec&lt;i32&gt; = Arbitrary::arbitrary(g);
+            </code>
+            </pre>
+            </section>
+            <section>
+                <h4>The Interface</h4>
+                <pre><code>
+pub trait Arbitrary : Clone + Send + 'static {
+    fn arbitrary&lt;G: Gen&gt;(g: &mut G) -&gt; Self;
+
+    fn shrink(&self) -&gt; Box&lt;Iterator&lt;Item=Self&gt;&gt; {
+        empty_shrinker()
+    }
+}
+                </code></pre>
+            </section>
+        </section>
+
+        <section>
+            <h4>Examples</h4>
+        </section>
+        <section>
+            <h4>Testing Properties</h4>
+        </section>
+        <section>
+            <h4>Mergesort</h4>
+        </section>
+        <section>
+            <section style="margin-left:-15%;width:130%;">
+                <h5>Javascript</h5>
+                <pre>
+                    <code>
+var assert = require('assert');
+require("mocha-testcheck").install();
+var ms = require("./merge_sort");
+
+describe("Merge Sort", function() {
+    check.it("should be idempotent",
+             gen.array(gen.int),
+             function(coll) {
+        var first = ms.mergesort(coll);
+        var second = ms.mergesort(first);
+        assert.deepEqual(first,second);
+    });
+});
+                    </code>
+                </pre>
+            </section>
+            <section style="margin-left:-15%;width:130%;">
+                <pre><code>
+check.it("should be stable",
+   gen.array(gen.object({"a":gen.int,"b":gen.int})),
+   function(coll) {
+      var sorted = ms.mergesort(coll,function(x) {return x["a"];});
+      for (var ii = 0; ii < sorted.length; ii++) {
+        var search = sorted[ii]["a"];
+        var original_search = coll.filter(function(s) {return s["a"] == search;})
+                                    .map(function(s) {return s["b"];});
+        var sorted_search = sorted.filter(function(s) {return s["a"] == search;})
+                                    .map(function(s) {return s["b"];});
+        assert(original_search.length == sorted_search.length);
+        original_search.map(function(o,i) {
+            assert.equal(sorted_search[i],o);
+        });
+    }
+});
+                    </code></pre>
+                </section>
+                <section>
+                    <pre style="font-size:0.4em;">
+  1) Merge Sort should be stable:
+
+      CheckFailure: ( [ { a: -5, b: 0 }, { a: -5, b: -1 } ] ) =&gt; AssertionError
+        [ERR_ASSERTION]: -1 == 0
+      + expected - actual
+
+      --1
+      +0
+      
+      at src/merge_sort.test.js:24:33
+      at Array.map (&lt;anonymous&gt;)
+      at Context.&lt;anonymous&gt; (src/merge_sort.test.js:23:38)
+      at Function.&lt;anonymous&gt; (node_modules/testcheck/dist/testcheck.js:719:42)
+      at Pe (node_modules/testcheck/dist/testcheck.js:180:90)
+      at node_modules/testcheck/dist/testcheck.js:718:641
+      at node_modules/testcheck/dist/testcheck.js:421:370
+      at mn (node_modules/testcheck/dist/testcheck.js:421:383)
+      at node_modules/testcheck/dist/testcheck.js:421:428
+      at node_modules/testcheck/dist/testcheck.js:210:290
+      at node_modules/testcheck/dist/testcheck.js:210:303
+      at Ce (node_modules/testcheck/dist/testcheck.js:160:54)
+      at Be.h.Y (node_modules/testcheck/dist/testcheck.js:162:291)
+      at E (node_modules/testcheck/dist/testcheck.js:90:313)
+      at xe.h.Ka (node_modules/testcheck/dist/testcheck.js:153:353)
+      at J (node_modules/testcheck/dist/testcheck.js:91:275)
+      at Et (node_modules/testcheck/dist/testcheck.js:718:277)
+      at Dt (node_modules/testcheck/dist/testcheck.js:717:601)
+      at Object.exports.check (node_modules/testcheck/dist/testcheck.js:723:227)
+      at Context.&lt;anonymous&gt; (node_modules/mocha-testcheck/mocha-check.js:73:33)
+                    </pre>
+                </section>
+            </section>
+            <section>
+            <section style="margin-left:-15%;width:130%;">
+                <h5>Python</h5>
+                <pre><code>
+from hypothesis import given
+import hypothesis.strategies as s
+
+from merge_sort import mergesort
+
+@given(s.lists(s.integers()))
+def test_idempotent(coll):
+    first = mergesort(coll)
+    second = mergesort(first)
+    assert(first == second)
+                </code></pre>
+            </section>
+            <section style="margin-left:-15%;width:130%;">
+                <pre><code>
+@given(s.lists(s.fixed_dictionaries({'a':s.integers(),'b':s.integers()})))
+def test_stable(coll):
+    prior = list(coll)
+    post = mergesort(coll,by=lambda x:x['a'])
+    sorted_vals = map(lambda x:x['a'],coll)
+    for v in sorted_vals:
+        prior_subset = filter(lambda x: x['a'] == v,prior)
+        post_subset  = filter(lambda x: x['a'] == v,post)
+        assert(prior == post)
+                </code></pre>
+            </section>
+            <section style="margin-top:-40px;">
+                <pre style="font-size:0.3em;">
+============================================== FAILURES ===============================================
+_____________________________________________ test_stable _____________________________________________
+
+    @given(s.lists(s.fixed_dictionaries({'a':s.integers(),'b':s.integers()})))
+>   def test_stable(coll):
+
+merge_sort_tests.py:14: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+lib/python3.6/site-packages/hypothesis/executors.py:58: in default_new_style_executor
+    return function(data)
+lib/python3.6/site-packages/hypothesis/core.py:115: in run
+    return test(*args, **kwargs)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+coll = [{'a': 0, 'b': 0}, {'a': 0, 'b': 1}]
+
+    @given(s.lists(s.fixed_dictionaries({'a':s.integers(),'b':s.integers()})))
+    def test_stable(coll):
+        prior = list(coll)
+        post = mergesort(coll,by=lambda x:x['a'])
+        sorted_vals = map(lambda x:x['a'],coll)
+        for v in sorted_vals:
+            prior_subset = filter(lambda x: x['a'] == v,prior)
+            post_subset  = filter(lambda x: x['a'] == v,post)
+>           assert(prior == post)
+E           AssertionError: assert [{'a': 0, 'b'...': 0, 'b': 1}] == [{'a': 0, 'b':...': 0, 'b': 0}]
+E             At index 0 diff: {'a': 0, 'b': 0} != {'a': 0, 'b': 1}
+E             Use -v to get the full diff
+
+merge_sort_tests.py:21: AssertionError
+--------------------------------------------- Hypothesis ----------------------------------------------
+Falsifying example: test_stable(coll=[{'a': 0, 'b': 0}, {'a': 0, 'b': 1}])
+                </pre>
+            </section>
+            </section>
+            <section>
+            <section style="margin-left:-15%;width:130%;">
+                <h5>Rust</h5>
+
+                <pre><code>
+#[cfg(test)]
+mod test{
+    use quickcheck::QuickCheck;
+    use super::*;
+
+    #[test]
+    fn idempotent() {
+        fn prop(v:Vec&lt;i32&gt;) -> bool {
+            let first = mergesort(&v,&|x| x);
+            let second = mergesort(&first,&|x| x);
+            first == second
+        }
+        QuickCheck::new().quickcheck(prop as fn(Vec&lt;i32&gt;) -> bool)
+    }
+}
+                </code></pre>
+            </section>
+            <section style="margin-left:-15%;width:135%;">
+                <pre><code>
+#[test]
+fn stable() {
+    fn prop(v:Vec&lt;(i32,i32)&gt;) -> bool {
+        let sorted = mergesort(&v,&|x| &x.0);
+        for &(k,_) in v.iter() {
+            let prior : Vec&lt;_&gt; = v.iter().filter(|&&(vk,_)| vk == k).collect();
+            let post : Vec&lt;_&gt; = sorted.iter().filter(|&&(sk,_)| sk == k).collect();
+            if prior != post {return false}
+        }
+        true
+    }
+    QuickCheck::new().quickcheck(prop as fn(Vec&lt;(i32,i32)&gt;) -> bool)
+}
+                </code></pre>
+            </section>
+            <section>
+                <pre>
+test mergesort::test::idempotent ... ok
+
+failures:
+
+---- mergesort::test::stable stdout ----
+	thread 'mergesort::test::stable' panicked at '[quickcheck] TEST FAILED.
+Arguments: ([(37, 0), (37, 1)])', /path/to/unimportant/file.rs:147:27
+note: Run with `RUST_BACKTRACE=1` for a backtrace.
+                </pre>
+            </section>
+            </section>
+            <section>
+                <h4>Bootstrapping Clever Solutions</h4>
+            </section>
+            <section>
+                <h4>Two Sums</h4>
+                <p>Given a list of integers and a target integer</p>
+                <p>return true if two ints in the list add up to the target</p>
+                <p>false otherwise</p>
+            </section>
+            <section>
+                <section style="margin-left:-20%;width:130%;">
+                    <h4>JavaScript</h4>
+                <pre><code>
+var assert = require('assert');
+require("mocha-testcheck").install();
+var two_sums = require("./two_sums");
+
+describe("Two Sums", function() {
+    check.it("should be solveable by binary search",
+             gen.array(gen.int),gen.int,function(coll,target) {
+        assert.equal(two_sums.binary(coll,target),two_sums.brute(coll,target));
+    });
+});
+                </code></pre>
+                </section>
+                <section>
+                    <pre>
+3) Two Sums should be solveable by binary search:
+
+      CheckFailure: ( [ -1, 9, 10, -3 ], 8 ) => AssertionError
+                                [ERR_ASSERTION]: false == true
+      + expected - actual
+
+      -false
+      +true
+</pre>
+                </section>
+            </section>
+            <section style="margin-left:-15%;width:135%;">
+                <h4>Python</h4>
+                <pre><code>
+from hypothesis import given
+import hypothesis.strategies as s
+
+from two_sums import brute_two_sums,hash_two_sums,squeeze_two_sums,binary_two_sums
+
+@given(s.lists(s.integers()),s.integers())
+def test_hash_two_sums(coll,target):
+    assert(brute_two_sums(coll,target) == hash_two_sums(coll,target))
+
+@given(s.lists(s.integers()),s.integers())
+def test_sort_two_sums(coll,target):
+    assert(brute_two_sums(coll,target) == squeeze_two_sums(coll,target))
+
+@given(s.lists(s.integers()),s.integers())
+def test_sort_then_binary_two_sums(coll,target):
+    assert(brute_two_sums(coll,target) == binary_two_sums(coll,target))
+                </code></pre>
+            </section>
+            <section>
+                <h4>But what about State?</h4>
+            </section>
+            <section>
+                <img style="border:0;"src="/anarchy.gif"></img>
+            </section>
+            <section>
+                <h5>5 types of data</h5>
+                <ul>
+                    <li>Inputs to a function</li>
+                    <li>Outputs of a function</li>
+                    <li class="fragment" data-fragment-index="1">Scratch Space used by the function</li>
+                    <li class="fragment" data-fragment-index="2">Effects</li>
+                    <li class="fragment" data-fragment-index="3">Coeffects</li>
+                </ul>
+            </section>
+            <section>
+                <h3>Obligatory Heretical Statement</h3>
+            </section>
+            <section>
+                <p>If we wrap our function in another function that manages the effects and coeffects, it looks a lot like a pure function with some scratch space</p>
+            </section>
+            <section><h4>Robinhood Hashing</h4>
+                <p>Should behave just like a regular hashmap</p>
+                <p class="fragment" data-fragment-index="1">Also behaves a lot like a simple database</p>
+            </section>
+            <section><h4>Reify Operations</h4>
+                <p class="fragment" data-fragment-index="1">Insert(Key,Value)</p>
+                <p class="fragment" data-fragment-index="1">Get(Key)</p>
+                <p class="fragment" data-fragment-index="1">Pop(Key)</p>
+            </section>
+            <section>
+                <section style="margin-left:-20%;width:130%;">
+                    <h4>Javascript</h4>
+                    <pre><code>
+check.it("should behave like a regular map", {times:10000,maxSize:60},
+         gen.array(
+             gen.oneOf([gen.object({instruction:"insert",
+                                    key:gen.string,val:gen.int}),
+                        gen.object({instruction:"pop",key:gen.string})])),
+                    </code></pre>
+                </section>
+                <section>
+                    <h5>Manage our coeffects</h5>
+                    <pre><code>
+function(steps) {
+  var canon = {};
+  var testing = rh.new_hash();
+                    </code></pre>
+                </section>
+                <section style="margin-left:-20%;width:130%;">
+                    <h5>Handle each step</h5>
+                    <pre>
+<code>steps.forEach(function(step) {
+    switch(step.instruction) {
+    case "insert":
+        canon[step.key] = step.valuel;
+        rh.insert(testing,step.key,step.value);
+        break;
+    case "get":
+        var canon_res = canon[step.key];
+        var test_res = rh.get(testing,step.key);
+        assert.equal(test_res,canon_res);
+        break;
+    case "pop":
+        canon_res = canon[step.key];
+        delete canon[step.key];
+        test_res = rh.pop(testing,step.key);
+        assert.equal(test_res,canon_res);
+        break;
+    }
+                    </code></pre>
+                </section>
+                <section style="margin-left:-20%;width:130%;">
+                    <h5>Check Invariants after each step</h5>
+                    <pre><code>
+var canon_keys = Object.keys(canon);
+var test_keys = testing.contents.map(function(x){return x[2];})
+                       .filter(function(x){return x !== null;});
+canon_keys.sort();
+test_keys.sort();
+assert.deepEqual(canon_keys,test_keys);
+canon_keys.forEach(function(k) {
+    assert.equal(canon[k],rh.get(testing,k));
+});
+                    </code></pre>
+                </section>
+                <section style="margin-left:-20%;width:130%;">
+                    <h4>What kinda space are we looking at here?</h4>
+                    <p class="fragment" data-fragment-index="1">A big one</p>
+                    <p class="fragment" data-fragment-index="2">Constrain it</p>
+                    <pre class="fragment" data-fragment-index="2"><code>
+var cands = tc.sample(gen.alphaNumString,40);
+key_set = gen.oneOf(cands.map(gen.return));
+
+check.it("should behave like a regular map", {times:10000,maxSize:60},
+         gen.array(
+             gen.oneOf([gen.object({instruction:"insert",
+                                    key:key_set,val:gen.int}),
+                        gen.object({instruction:"pop",key:key_set})])),
+                    </code></pre>
+                </section>
+                <section>
+                    <h5>Bingo</h5>
+                    <pre>
+ 2) Robinhood Hashmaps should behave like a regular map:
+
+CheckFailure: ( [ { instruction: 'insert', key: 'TIX9m079KRt6v864WY5', val: 0 },
+    { instruction: 'insert', key: 'x2x623b6a', val: 0 },
+    { instruction: 'insert', key: 'MKJUFJBJkEGVw7', val: 0 },
+    { instruction: 'insert', key: 'oL5x437jv', val: 0 },
+    { instruction: 'insert', key: '1J', val: 0 },
+    { instruction: 'pop', key: 'TIX9m079KRt6v864WY5' },
+    { instruction: 'insert', key: '1J', val: 0 } ] ) => AssertionError [ERR_ASSERTION]: [ '1J', 'MKJUFJBJkEGVw7', 'oL5x437jv', 'x2x623b6a' ] deepEqual [ '1J', '1J', 'MKJUFJBJkEGVw7', 'oL5x437jv', 'x2x623b6a' ]
+      + expected - actual
+
+       [
+         "1J"
+      +  "1J"
+         "MKJUFJBJkEGVw7"
+         "oL5x437jv"
+         "x2x623b6a"
+       ]
+                    </pre>
+                </section>
+            </section>
+            <section>
+                <section style="margin-left:-20%;width:130%;">
+                <h5>Python</h5>
+                <p>Hypothesis makes this easier</p>
+                <pre><code>from hypothesis.stateful import GenericStateMachine,run_state_machine_as_test</code></pre>
+                </section>
+                <section>
+                    <h5>Manage our coeffects</h5>
+                    <pre><code>
+class RobinHoodTester(GenericStateMachine):
+    def __init__(self):
+        self.canonical = {}
+        self.robinhood = RobinHood()
+</code></pre>
+                </section>
+                <section>
+                    <h5>Generate steps</h5>
+                    <pre><code>
+ks = s.one_of(s.booleans(),s.integers(),s.characters())
+vs = ks
+def steps(self):
+    if len(self.canonical) == 0:
+        return s.tuples(s.just("insert"),ks,vs)
+    else:
+        opts = [x for x in self.canonical.keys()]
+        return s.one_of(
+            s.tuples(s.just("insert"),ks,vs),
+            s.tuples(s.just("pop"),s.sampled_from(opts)))
+                    </code></pre>
+                </section>
+                <section>
+                    <h5>Apply each step, and verify</h5>
+                    <pre><code>
+def execute_step(self,step):
+    a = step[0]
+    if a == "insert":
+        _,k,v = step
+        self.canonical[k] = v
+        self.robinhood.insert(k,v)
+    elif a == "pop":
+        _,k = step
+        canon_pop = self.canonical.pop(k)
+        robin_pop = self.robinhood.pop(k)
+        assert(canon_pop == robin_pop)
+
+    for k in self.canonical.keys():
+        assert(self.canonical.get(k) == self.robinhood.get(k))
+                    </code></pre>
+                </section>
+                <section>
+                    <pre>
+Step #1: ('insert', False, 0)
+Step #2: ('pop', False)
+Step #3: ('insert', 3, 0)
+Step #4: ('insert', True, 0)
+Step #5: ('insert', False, False)
+Step #6: ('pop', 3)
+                    </pre>
+                </section>
+            </section>
+            <section>
+                <h4>Rust</h4>
+                <p>Wanna help me implement state machines?</p>
+            </section>
+            </section>
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+			// More info about config & dependencies:
+			// - https://github.com/hakimel/reveal.js#configuration
+			// - https://github.com/hakimel/reveal.js#dependencies
+			Reveal.initialize({
+				dependencies: [
+					{ src: 'plugin/markdown/marked.js' },
+					{ src: 'plugin/markdown/markdown.js' },
+					{ src: 'plugin/notes/notes.js', async: true },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+				]
+			});
+		</script>
+	</body>
+</html>
